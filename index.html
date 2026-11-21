@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#141414" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Verwaltung" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141414'/%3E%3Cpath d='M18 20h28M18 32h28M18 44h18' stroke='%23f5c000' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -111,6 +117,7 @@ td select{padding:4px 6px;font-size:.85rem}
   <header>
     <h1>Wexhainis <b>Verwaltung</b></h1>
     <span class="who" id="who"></span>
+    <button id="bInst" hidden>App installieren</button>
     <button id="bOut">Abmelden</button>
   </header>
   <div class="wrap">
@@ -148,7 +155,7 @@ const firebaseConfig = {
   appId: "1:561283415943:web:56e161ccaac34529421d22"
 };
 const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const URL_SL = 'https://firestorm1902.github.io/wexhainis-strichliste/';
 const URL_ST = 'https://firestorm1902.github.io/wexhainis-stundentracker/';
 const FC = 'https://console.firebase.google.com/project/wexhainis-getraenkestrichliste/';
@@ -538,6 +545,7 @@ function vLinks() {
     L(FC + 'firestore/databases/-default-/rules', 'Firestore → Regeln', 'Regeln aus dem Stundentracker-Repo komplett einfügen und veröffentlichen') +
     L(FC + 'firestore/databases/-default-/data', 'Firestore → Daten', 'Rohdaten ansehen') +
     L(FC + 'usage', 'Nutzung & Kontingente', 'Lese-/Schreibzugriffe im Blick behalten') +
+    '<h2 style="margin-top:14px">Als App installieren</h2><p class="mut" style="font-size:.88rem"><b>Android/Chrome/Edge:</b> oben „App installieren“ oder im Browser-Menü „App installieren“.<br><b>iPhone/iPad:</b> in Safari Teilen → „Zum Home-Bildschirm“.</p>' +
     '<h2 style="margin-top:14px">Gut zu wissen</h2><p class="mut" style="font-size:.88rem">Diese Seite zeigt Profile aus der Sammlung <code>users</code>. Logins ohne Profil (z. B. abgebrochene Registrierungen) siehst du nur in der Firebase-Konsole unter Authentication.<br><br>Deine Nutzer-ID: <code>' + esc(S.user.uid) + '</code></p></div></div>';
 }
 
@@ -681,6 +689,13 @@ document.addEventListener('input', e => {
   if (e.target.id === 'mfQ') { S.mf.q = e.target.value; render(); }
   if (e.target.id === 'lgQ') { S.logF.q = e.target.value; render(); }
 });
+
+/* ---------- Installieren ---------- */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
+let instEv = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; $('bInst').hidden = false; });
+window.addEventListener('appinstalled', () => { instEv = null; $('bInst').hidden = true; toast('Verwaltung installiert'); });
+$('bInst').onclick = async () => { if (!instEv) return; instEv.prompt(); await instEv.userChoice; instEv = null; $('bInst').hidden = true; };
 
 boot().catch(e => { console.error(e); $('vLoad').innerHTML = '<div class="err">Firebase konnte nicht geladen werden: ' + esc(e.message) + '</div>'; });
 </script>

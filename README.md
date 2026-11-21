@@ -5,6 +5,10 @@ Läuft auf GitHub Pages und nutzt dasselbe Firebase-Projekt (`wexhainis-getraenk
 
 Adresse: https://firestorm1902.github.io/wexhainis-admin/
 
+## Installieren
+Die Seite ist eine installierbare Web-App (PWA): am Handy/PC über „App installieren“ im Header bzw. Browser-Menü, auf dem iPhone in Safari über Teilen → „Zum Home-Bildschirm“.
+Bei jeder Änderung `APP_VERSION` in `index.html` und `VERSION` in `sw.js` hochzählen.
+
 ## Bereiche
 - **Übersicht** – Kennzahlen beider Apps und eine Liste mit allem, was zu erledigen ist (Anmeldungen, Löschanträge, Nachrichten, Anträge, Rechte-Hinweise)
 - **Mitglieder** – alle Profile mit Filter und Suche; Gruppe, Strichliste-Rolle, Jugendschutz, Stundentracker-Freigabe und Stunden-Rolle direkt in der Tabelle ändern; Mehrfachauswahl; Excel-Export; Detailansicht mit Sperren, Entfernen, Wiederherstellen, Umbenennen
