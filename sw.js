@@ -1,7 +1,7 @@
 // Bei jeder Änderung hochzählen (gleich wie APP_VERSION in index.html)
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'verwaltung-' + VERSION;
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon-32.png', './icon.svg'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

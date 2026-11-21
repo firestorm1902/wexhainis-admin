@@ -1,4 +1,4 @@
-# Wexhainis Verwaltung
+# WexSuperAdmin
 
 Dashboard nur für den Super-Admin: alle Mitgliederkonten und Rechte von **Getränke-Strichliste** und **Wexhainer Stundentracker** an einem Ort.
 Läuft auf GitHub Pages und nutzt dasselbe Firebase-Projekt (`wexhainis-getraenkestrichliste`) wie die beiden Apps.

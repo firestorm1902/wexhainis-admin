@@ -7,15 +7,16 @@
 <meta name="theme-color" content="#141414" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Verwaltung" />
+<meta name="apple-mobile-web-app-title" content="WexSuperAdmin" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 <link rel="manifest" href="./manifest.webmanifest" />
-<link rel="apple-touch-icon" href="./icon-192.png" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141414'/%3E%3Cpath d='M18 20h28M18 32h28M18 44h18' stroke='%23f5c000' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+<link rel="icon" href="./favicon-32.png" type="image/png" />
+<link rel="icon" href="./icon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet" />
-<title>Wexhainis Verwaltung</title>
+<title>WexSuperAdmin</title>
 <style>
 :root{--bg:#f6f3ea;--ink:#141414;--mu:#5c574b;--line:#d8d1bf;--wy:#f5c000;--wy2:#fff2bf;--card:#fff;--pen:#c62828;--pet:#1f6b3b;--blu:#1d4f91;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#121211;--ink:#f1ede2;--mu:#aaa392;--line:#3a372f;--card:#1e1d1a;--wy2:#3a3215;--pen:#ff7366;--pet:#6cc58a;--blu:#8db6ef;color-scheme:dark}}
@@ -94,7 +95,7 @@ td select{padding:4px 6px;font-size:.85rem}
 
 <!-- Anmeldung -->
 <section id="vLogin" class="login" hidden>
-  <h1>Wexhainis <span style="color:#c99c00">Verwaltung</span></h1>
+  <img src="./icon-192.png" alt="" width="72" height="72" style="border-radius:16px;display:block;margin-bottom:12px" /><h1>Wex<span style="color:#c99c00">SuperAdmin</span></h1>
   <p class="mut">Nur für den Super-Admin. Anmeldung mit dem Konto der Strichliste.</p>
   <form id="fLogin">
     <input id="lMail" type="email" placeholder="E-Mail" autocomplete="username" required />
@@ -115,7 +116,7 @@ td select{padding:4px 6px;font-size:.85rem}
 <!-- App -->
 <div id="vApp" hidden>
   <header>
-    <h1>Wexhainis <b>Verwaltung</b></h1>
+    <img src="./favicon-32.png" alt="" width="26" height="26" style="border-radius:6px" /><h1>Wex<b>SuperAdmin</b></h1>
     <span class="who" id="who"></span>
     <button id="bInst" hidden>App installieren</button>
     <button id="bOut">Abmelden</button>
@@ -155,7 +156,7 @@ const firebaseConfig = {
   appId: "1:561283415943:web:56e161ccaac34529421d22"
 };
 const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const URL_SL = 'https://firestorm1902.github.io/wexhainis-strichliste/';
 const URL_ST = 'https://firestorm1902.github.io/wexhainis-stundentracker/';
 const FC = 'https://console.firebase.google.com/project/wexhainis-getraenkestrichliste/';
@@ -694,7 +695,7 @@ document.addEventListener('input', e => {
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
 let instEv = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; $('bInst').hidden = false; });
-window.addEventListener('appinstalled', () => { instEv = null; $('bInst').hidden = true; toast('Verwaltung installiert'); });
+window.addEventListener('appinstalled', () => { instEv = null; $('bInst').hidden = true; toast('WexSuperAdmin installiert'); });
 $('bInst').onclick = async () => { if (!instEv) return; instEv.prompt(); await instEv.userChoice; instEv = null; $('bInst').hidden = true; };
 
 boot().catch(e => { console.error(e); $('vLoad').innerHTML = '<div class="err">Firebase konnte nicht geladen werden: ' + esc(e.message) + '</div>'; });

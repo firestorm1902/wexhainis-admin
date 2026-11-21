@@ -1,6 +1,6 @@
 {
-  "name": "Wexhainis Verwaltung",
-  "short_name": "Verwaltung",
+  "name": "WexSuperAdmin",
+  "short_name": "WexSuperAdmin",
   "description": "Super-Admin-Verwaltung für Getränke-Strichliste und Stundentracker",
   "start_url": "./",
   "scope": "./",
