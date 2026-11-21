@@ -5,22 +5,23 @@
     </pattern>
   </defs>
   <rect width="512" height="512" fill="#141414"/>
-  <rect y="430" width="512" height="82" fill="url(#hz)"/>
-  <rect y="0" width="512" height="34" fill="url(#hz)"/>
-  <g id="bee" transform="translate(250 272) rotate(-12) scale(2.85) translate(-62 -46)">
-    <ellipse cx="50" cy="20" rx="22" ry="14" fill="#fff" opacity=".85" transform="rotate(-24 50 20)"/>
-    <ellipse cx="74" cy="17" rx="20" ry="13" fill="#fff" opacity=".7" transform="rotate(18 74 17)"/>
-    <ellipse cx="60" cy="50" rx="36" ry="22" fill="#f5c000" stroke="#000" stroke-width="3.5"/>
-    <path d="M43 31 v38 M58 28.5 v43 M73 31 v38" stroke="#141414" stroke-width="7.5"/>
-    <circle cx="98" cy="46" r="13" fill="#141414" stroke="#000" stroke-width="2"/>
-    <circle cx="103" cy="42" r="3.4" fill="#f5c000"/>
-    <path d="M24 50 l-15 4.5 l15 4.5z" fill="#f5c000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
-    <!-- Krone -->
-    <g transform="rotate(14 98 30)">
-      <path d="M85 34 L84 17 L91.5 25 L98 13 L104.5 25 L112 17 L111 34 Z" fill="#ffd84a" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
-      <rect x="84.5" y="31" width="27" height="5" rx="1.5" fill="#f5c000" stroke="#000" stroke-width="1.8"/>
-      <circle cx="98" cy="13" r="2.4" fill="#fff"/><circle cx="84" cy="17" r="2" fill="#fff"/><circle cx="112" cy="17" r="2" fill="#fff"/>
-      <circle cx="98" cy="27" r="2.2" fill="#c62828"/>
+  <rect x="0" y="0.0" width="512" height="30.0" fill="url(#hz)"/><rect x="0" y="482.0" width="512" height="30.0" fill="url(#hz)"/>
+  <g transform="translate(0.0 0.0) scale(1.0)">
+    <!-- Biene (wie Strichliste) -->
+    <g transform="translate(256 200) rotate(-12) scale(2.55) translate(-62 -46)">
+      <ellipse cx="50" cy="20" rx="22" ry="14" fill="#fff" opacity=".85" transform="rotate(-24 50 20)"/>
+      <ellipse cx="74" cy="17" rx="20" ry="13" fill="#fff" opacity=".7" transform="rotate(18 74 17)"/>
+      <ellipse cx="60" cy="50" rx="36" ry="22" fill="#f5c000" stroke="#000" stroke-width="3.5"/>
+      <path d="M43 31 v38 M58 28.5 v43 M73 31 v38" stroke="#141414" stroke-width="7.5"/>
+      <circle cx="98" cy="46" r="13" fill="#141414" stroke="#000" stroke-width="2"/>
+      <circle cx="103" cy="42" r="3.4" fill="#f5c000"/>
+      <path d="M24 50 l-15 4.5 l15 4.5z" fill="#f5c000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M102 34 q7 -13 16 -13 M96 34 q2 -15 9 -20" stroke="#f5c000" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- Krone (statt Strichen) -->
+    <g transform="translate(256 388)" fill="none" stroke="#f4f1e6" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-62 28 L-70 -34 L-32 -4 L0 -46 L32 -4 L70 -34 L62 28 Z"/>
+      <path d="M-58 50 H58"/>
     </g>
   </g>
 </svg>
