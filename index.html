@@ -158,7 +158,7 @@ const firebaseConfig = {
   appId: "1:561283415943:web:56e161ccaac34529421d22"
 };
 const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.0';
 const URL_SL = 'https://firestorm1902.github.io/wexhainis-strichliste/';
 const URL_ST = 'https://firestorm1902.github.io/wexhainis-stundentracker/';
 const FC = 'https://console.firebase.google.com/project/wexhainis-getraenkestrichliste/';
@@ -301,8 +301,10 @@ async function upd(id, data, what, logText) {
 const A = {
   approve: (id, std) => upd(id, std ? { pending: false, std: true } : { pending: false }, 'Freischalten', 'schaltet ' + uname(id) + ' frei' + (std ? ' (inkl. Stundentracker)' : '')).then(ok => ok && toast(uname(id) + ' freigeschaltet')),
   reject: async id => { if (await ask('Anmeldung von „' + uname(id) + '“ ablehnen?', 'Ablehnen', true)) upd(id, { pending: false, deleted: true, blocked: true }, 'Ablehnen', 'lehnt die Anmeldung von ' + uname(id) + ' ab'); },
-  block: async id => { if (await ask('„' + uname(id) + '“ sperren?\nDas Konto ist dann in Strichliste UND Stundentracker gesperrt.', 'Sperren', true)) upd(id, { blocked: true }, 'Sperren', 'sperrt ' + uname(id)); },
+  block: async id => { if (await ask('„' + uname(id) + '“ für BEIDE Apps sperren?\nDas Konto ist dann in Strichliste UND Stundentracker gesperrt.', 'Sperren', true)) upd(id, { blocked: true }, 'Sperren', 'sperrt ' + uname(id)); },
   unblock: id => upd(id, { blocked: false }, 'Entsperren', 'entsperrt ' + uname(id)),
+  slBlock: async (id, on) => { if (on === undefined) on = !S.users[id].slBlock; if (on && !await ask('„' + uname(id) + '“ nur für die Strichliste sperren?\nDer Stundentracker bleibt nutzbar.', 'Sperren', true)) return render(); upd(id, { slBlock: on }, 'Strichliste sperren', (on ? 'sperrt ' : 'entsperrt ') + uname(id) + ' für die Strichliste'); },
+  stdBlock: async (id, on) => { if (on === undefined) on = !S.users[id].stdBlock; if (on && !await ask('„' + uname(id) + '“ nur für den Stundentracker sperren?\nDie Strichliste bleibt nutzbar.', 'Sperren', true)) return render(); upd(id, { stdBlock: on }, 'Stundentracker sperren', (on ? 'sperrt ' : 'entsperrt ') + uname(id) + ' für den Stundentracker'); },
   remove: async id => {
     if (!await ask('„' + uname(id) + '“ entfernen?\nDas Konto wird in beiden Apps gesperrt und ausgeblendet, Rollen werden entzogen. Buchungen und Stunden bleiben erhalten.\n\nBuchungen mitlöschen geht nur in der Strichliste (dort werden die Tageszähler neu berechnet).', 'Entfernen', true)) return;
     upd(id, { deleted: true, blocked: true, role: F.deleteField(), std: false, sr: F.deleteField() }, 'Entfernen', 'entfernt ' + uname(id));
@@ -358,7 +360,7 @@ function errBox() {
     (e.some(([, c]) => c === 'failed-precondition') ? '<br>Für eine Abfrage fehlt ein Index – der Link dazu steht in der Browser-Konsole.' : '') + '</div>';
 }
 const kpi = (n, label, go, cls = '') => '<div class="kpi ' + cls + '" data-go="' + go + '"><b>' + n + '</b><span>' + label + '</span></div>';
-const tagStatus = u => { const s = status(u); return '<span class="tag ' + ({ aktiv: 'ok', wartend: 'y', gesperrt: 'warn', entfernt: '' }[s]) + '">' + STATUS[s] + '</span>'; };
+const tagStatus = u => { const s = status(u); return '<span class="tag ' + ({ aktiv: 'ok', wartend: 'y', gesperrt: 'warn', entfernt: '' }[s]) + '">' + (s === 'gesperrt' ? 'beide gesperrt' : STATUS[s]) + '</span>' + (s === 'aktiv' || s === 'wartend' ? (u.slBlock ? '<span class="tag warn">Strichliste gesperrt</span>' : '') + (u.stdBlock ? '<span class="tag warn">Stunden gesperrt</span>' : '') : ''); };
 
 /* Übersicht */
 function vHome() {
@@ -408,6 +410,7 @@ function filteredMembers() {
     if (q && !((u.name || '') + ' ' + (u.email || '') + ' ' + u.id).toLowerCase().includes(q)) return false;
     if (f.status === 'delreq') { if (!u.delreq || u.deleted) return false; }
     else if (f.status === 'std') { if (u.std !== true || u.deleted) return false; }
+    else if (f.status === 'slBlock' || f.status === 'stdBlock') { if (!u[f.status] || u.deleted) return false; }
     else if (f.status) { if (status(u) !== f.status) return false; }
     else if (u.deleted) return false;
     if (f.role === 'none' && (u.role || u.sr)) return false;
@@ -425,7 +428,7 @@ function vMembers() {
   const opt = (v, l, cur) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + esc(l) + '</option>';
   let h = '<h1>Mitglieder</h1><p class="sub mut">Ein Profil gilt für beide Apps. Sperren und Entfernen wirken in Strichliste und Stundentracker gleichzeitig.</p>';
   h += '<div class="bar"><input type="search" id="mfQ" placeholder="Name, E-Mail oder Nutzer-ID" value="' + esc(f.q) + '" />' +
-    '<select id="mfS">' + opt('', 'Status: alle außer entfernt', f.status) + opt('aktiv', 'aktiv', f.status) + opt('wartend', 'wartet', f.status) + opt('gesperrt', 'gesperrt', f.status) + opt('entfernt', 'entfernt', f.status) + opt('delreq', 'mit Löschantrag', f.status) + opt('std', 'Stundentracker frei', f.status) + '</select>' +
+    '<select id="mfS">' + opt('', 'Status: alle außer entfernt', f.status) + opt('aktiv', 'aktiv', f.status) + opt('wartend', 'wartet', f.status) + opt('gesperrt', 'gesperrt', f.status) + opt('entfernt', 'entfernt', f.status) + opt('delreq', 'mit Löschantrag', f.status) + opt('slBlock', 'Strichliste gesperrt', f.status) + opt('stdBlock', 'Stunden gesperrt', f.status) + opt('std', 'Stundentracker frei', f.status) + '</select>' +
     '<select id="mfR">' + opt('', 'Rolle: alle', f.role) + opt('admin', 'Getränke-Admin', f.role) + opt('vorstand', 'Vorstand (Strichliste)', f.role) + opt('sr_admin', 'Stunden-Admin', f.role) + opt('sr_vorstand', 'Vorstand (Stunden)', f.role) + opt('none', 'ohne Sonderrolle', f.role) + '</select>' +
     '<select id="mfT">' + opt('', 'Stundentracker: alle', f.std) + opt('yes', 'freigegeben', f.std) + opt('no', 'nicht freigegeben', f.std) + '</select>' +
     '<select id="mfG">' + opt('', 'Gruppe: alle', f.grp) + groups().map(g => opt(g.id, g.name, f.grp)).join('') + opt('-', 'ohne Gruppe', f.grp) + '</select>' +
@@ -433,7 +436,7 @@ function vMembers() {
     '<button class="btn" data-a="xlsMembers">Excel</button><span class="mut">' + list.length + ' Personen</span></div>';
   if (!list.length) return h + '<div class="card empty">Keine Treffer.</div>';
   const allSel = list.every(u => S.sel.has(u.id));
-  h += '<div class="tw"><table><thead><tr><th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + ' /></th><th>Name</th><th>Status</th><th>Gruppe</th><th>Strichliste</th><th title="Jugendschutz: kein Alkohol">U18</th><th>Stunden&shy;tracker</th><th>Stunden-Rolle</th><th class="num">Std. ' + y + '</th><th>Seit</th></tr></thead><tbody>';
+  h += '<div class="tw"><table><thead><tr><th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + ' /></th><th>Name</th><th>Status</th><th>Gruppe</th><th>Strichliste</th><th title="Nur für die Strichliste gesperrt">SL ⛔</th><th title="Jugendschutz: kein Alkohol">U18</th><th>Stunden&shy;tracker</th><th>Stunden-Rolle</th><th title="Nur für den Stundentracker gesperrt">Std. ⛔</th><th class="num">Std. ' + y + '</th><th>Seit</th></tr></thead><tbody>';
   list.forEach(u => {
     const me = isMe(u.id), dis = u.deleted ? ' disabled' : '';
     const ist = istFor(u.id), soll = sollFor(u.id, y);
@@ -442,9 +445,11 @@ function vMembers() {
       '<td>' + tagStatus(u) + '</td>' +
       '<td><select data-f="grp" data-id="' + u.id + '"' + dis + '>' + opt('', '–', u.grp || '') + groups().map(g => opt(g.id, g.name, u.grp || '')).join('') + '</select></td>' +
       '<td><select data-f="role" data-id="' + u.id + '"' + dis + '>' + Object.entries(ROLE).map(([k, l]) => opt(k, l, u.role || '')).join('') + '</select></td>' +
+      '<td><input type="checkbox" title="Nur Strichliste sperren" data-f="slBlock" data-id="' + u.id + '"' + (u.slBlock ? ' checked' : '') + (dis || (me ? ' disabled' : '')) + ' /></td>' +
       '<td><input type="checkbox" data-f="minor" data-id="' + u.id + '"' + (u.minor ? ' checked' : '') + dis + ' /></td>' +
       '<td><input type="checkbox" data-f="std" data-id="' + u.id + '"' + (u.std === true ? ' checked' : '') + dis + ' /></td>' +
       '<td><select data-f="sr" data-id="' + u.id + '"' + dis + '>' + Object.entries(SR).map(([k, l]) => opt(k, l, u.sr || '')).join('') + '</select></td>' +
+      '<td><input type="checkbox" title="Nur Stundentracker sperren" data-f="stdBlock" data-id="' + u.id + '"' + (u.stdBlock ? ' checked' : '') + (dis || (me ? ' disabled' : '')) + ' /></td>' +
       '<td class="num">' + (u.std === true ? '<span class="' + (ist >= soll ? 'okTxt' : '') + '">' + nf(ist) + '</span><small class="mut"> / ' + nf(soll) + '</small>' : '<span class="mut">–</span>') + '</td>' +
       '<td><small>' + dt(u.t) + '</small></td></tr>';
   });
@@ -452,6 +457,7 @@ function vMembers() {
   const sel = [...S.sel].filter(id => S.users[id]);
   if (sel.length) h += '<div class="sel-bar"><b>' + sel.length + ' ausgewählt</b>' +
     '<button class="btn" data-a="bulkApprove">Freischalten</button><button class="btn" data-a="bulkStdOn">Stundentracker freigeben</button><button class="btn" data-a="bulkStdOff">Stundentracker entziehen</button>' +
+    '<button class="btn" data-a="bulkSlBlock">Strichliste sperren</button><button class="btn" data-a="bulkSlFree">Strichliste entsperren</button><button class="btn" data-a="bulkStdBlock">Stunden sperren</button><button class="btn" data-a="bulkStdFree">Stunden entsperren</button>' +
     '<select id="bulkGrp"><option value="">Gruppe setzen …</option>' + groups().map(g => '<option value="' + g.id + '">' + esc(g.name) + '</option>').join('') + '</select>' +
     '<button class="btn" data-a="bulkClear">Auswahl aufheben</button></div>';
   return h;
@@ -467,24 +473,26 @@ function warnings() {
     if (u.std === true && s === 'entfernt') w.push([u, 'Entfernt, aber noch für den Stundentracker freigegeben.', 'fixStd']);
     if (!u.email && !u.deleted) w.push([u, 'Keine E-Mail im Profil – Rechnungen und Rückfragen sind schwer zuzuordnen.', null]);
     if (u.minor && u.role === 'admin') w.push([u, 'Ist als minderjährig markiert und Getränke-Admin.', null]);
+    if (u.role && u.slBlock && s !== 'entfernt') w.push([u, 'Hat eine Strichliste-Rolle, ist dort aber gesperrt – die Rolle wirkt nicht.', null]);
+    if (u.sr && u.stdBlock && s !== 'entfernt') w.push([u, 'Hat eine Stunden-Rolle, ist im Stundentracker aber gesperrt – die Rolle wirkt nicht.', null]);
   });
   return w;
 }
 function vRights() {
-  const live = userList().filter(u => !u.deleted && (u.role || u.sr || isMe(u.id))).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+  const live = userList().filter(u => !u.deleted && (u.role || u.sr || u.slBlock || u.stdBlock || isMe(u.id))).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
   const ck = b => b ? '<span class="okTxt">✔</span>' : '<span class="mut">–</span>';
   let h = '<h1>Rechte</h1><p class="sub mut">Wer darf was – in beiden Apps. Die Rollen sind getrennt: Getränke-Admin gibt im Stundentracker keine Rechte und umgekehrt.</p>';
   h += '<div class="tw"><table><thead><tr><th>Name</th><th>Status</th><th>Super-Admin</th><th>Getränke-Admin</th><th>Vorstand (Strichliste)</th><th>Stundentracker</th><th>Stunden-Admin</th><th>Vorstand (Stunden)</th></tr></thead><tbody>';
   live.forEach(u => {
-    h += '<tr><td><button class="nm" data-open="' + u.id + '">' + esc(u.name) + '</button></td><td>' + tagStatus(u) + '</td><td>' + ck(isMe(u.id)) + '</td><td>' + ck(u.role === 'admin' || isMe(u.id)) + '</td><td>' + ck(u.role === 'vorstand') +
-      '</td><td>' + ck(u.std === true || isMe(u.id)) + '</td><td>' + ck(u.sr === 'admin' || isMe(u.id)) + '</td><td>' + ck(u.sr === 'vorstand') + '</td></tr>';
+    h += '<tr><td><button class="nm" data-open="' + u.id + '">' + esc(u.name) + '</button></td><td>' + tagStatus(u) + '</td><td>' + ck(isMe(u.id)) + '</td><td>' + ck(isMe(u.id) || (u.role === 'admin' && !u.slBlock)) + '</td><td>' + ck(u.role === 'vorstand' && !u.slBlock) +
+      '</td><td>' + ck(isMe(u.id) || (u.std === true && !u.stdBlock)) + '</td><td>' + ck(isMe(u.id) || (u.sr === 'admin' && !u.stdBlock)) + '</td><td>' + ck(u.sr === 'vorstand' && !u.stdBlock) + '</td></tr>';
   });
   h += '</tbody></table></div>';
   h += '<div class="cols" style="margin-top:14px"><div class="card"><h2>Was die Rollen dürfen</h2>' +
     '<p><b>Super-Admin</b> – alles in beiden Apps. Festgelegt über die Nutzer-ID in <code>superUids()</code> der Firestore-Regeln, nicht hier.</p>' +
     '<p><b>Getränke-Admin</b> – Tage, Getränke, Abgleich, Freischalten, Namen, Gruppen, Jugendschutz.</p>' +
     '<p><b>Vorstand (Strichliste)</b> – liest Tage, Buchungen, Personen für Excel-Auswertungen.</p>' +
-    '<p><b>Stundentracker</b> – eigene Stunden erfassen. <b>Stunden-Admin</b> – alle Stunden ändern, Freigabe und Vorstand vergeben, Rechnungen. <b>Vorstand (Stunden)</b> – alle Stunden lesen.</p></div>';
+    '<p><b>Sperren</b> – „Beide Apps sperren“ sperrt das ganze Konto. „Nur Strichliste“ bzw. „Nur Stundentracker“ sperrt eine App, die andere bleibt nutzbar. Rollen in der gesperrten App wirken dann nicht.</p><p><b>Stundentracker</b> – eigene Stunden erfassen. <b>Stunden-Admin</b> – alle Stunden ändern, Freigabe und Vorstand vergeben, Rechnungen. <b>Vorstand (Stunden)</b> – alle Stunden lesen.</p></div>';
   const w = warnings();
   h += '<div class="card"><h2>Hinweise</h2>' + (w.length ? w.map(([u, t, fix]) => '<div class="todo"><div class="t"><button class="nm" data-open="' + u.id + '">' + esc(u.name) + '</button> <span class="mut">' + esc(t) + '</span></div>' + (fix ? '<button class="btn" data-a="' + fix + '" data-id="' + u.id + '">Beheben</button>' : '') + '</div>').join('') : '<div class="empty">Keine Auffälligkeiten.</div>') + '</div></div>';
   return h;
@@ -670,16 +678,18 @@ function renderDrawer() {
   h += '<p>' + tagStatus(u) + (isMe(id) ? '<span class="tag y">Super-Admin</span>' : '') + (u.delreq && !u.deleted ? '<span class="tag warn">Löschantrag seit ' + dt(u.delreq) + '</span>' : '') + '</p>';
   h += '<dl class="dl"><dt>E-Mail</dt><dd>' + (u.email ? '<a href="mailto:' + esc(u.email) + '">' + esc(u.email) + '</a>' : '–') + '</dd><dt>Nutzer-ID</dt><dd><code>' + esc(id) + '</code></dd><dt>Registriert</dt><dd>' + dt(u.t) + '</dd>' +
     '<dt>Gruppe</dt><dd>' + esc(gname(u.grp) || '–') + '</dd><dt>Datenschutz</dt><dd>' + (u.dsgvo ? 'bestätigt ' + dt(u.dsgvo) : 'nicht bestätigt') + '</dd><dt>Jugendschutz</dt><dd>' + (u.minor ? 'minderjährig – kein Alkohol' : 'nein') + '</dd></dl>';
-  h += '<h3>Strichliste</h3><dl class="dl"><dt>Rolle</dt><dd>' + ROLE[u.role || ''] + '</dd><dt>Buchungen</dt><dd>' + (ms.scans != null ? nf(ms.scans) + ' gesamt' : ms.err ? 'Fehler: ' + esc(ms.err) : 'lädt …') + '</dd><dt>Easter Eggs</dt><dd>' + (u.eggoff ? 'für sich ausgeschaltet' : 'an') + '</dd></dl>';
+  h += '<h3>Strichliste</h3><dl class="dl"><dt>Rolle</dt><dd>' + ROLE[u.role || ''] + '</dd><dt>Gesperrt</dt><dd>' + (u.blocked ? 'ja (beide Apps)' : u.slBlock ? 'ja (nur Strichliste)' : 'nein') + '</dd><dt>Buchungen</dt><dd>' + (ms.scans != null ? nf(ms.scans) + ' gesamt' : ms.err ? 'Fehler: ' + esc(ms.err) : 'lädt …') + '</dd><dt>Easter Eggs</dt><dd>' + (u.eggoff ? 'für sich ausgeschaltet' : 'an') + '</dd></dl>';
   const inv = S.inv.find(i => i.id === id + '_' + y);
-  h += '<h3>Stundentracker</h3><dl class="dl"><dt>Freigegeben</dt><dd>' + yes(u.std === true) + '</dd><dt>Rolle</dt><dd>' + SR[u.sr || ''] + '</dd><dt>' + y + '</dt><dd>' + nf(istFor(id)) + ' von ' + nf(sollFor(id, y)) + ' h</dd>' +
+  h += '<h3>Stundentracker</h3><dl class="dl"><dt>Freigegeben</dt><dd>' + yes(u.std === true) + '</dd><dt>Gesperrt</dt><dd>' + (u.blocked ? 'ja (beide Apps)' : u.stdBlock ? 'ja (nur Stundentracker)' : 'nein') + '</dd><dt>Rolle</dt><dd>' + SR[u.sr || ''] + '</dd><dt>' + y + '</dt><dd>' + nf(istFor(id)) + ' von ' + nf(sollFor(id, y)) + ' h</dd>' +
     '<dt>Insgesamt</dt><dd>' + (ms.stdAll != null ? nf(ms.stdAll) + ' h in ' + ms.stdN + ' Einträgen' : '…') + '</dd><dt>Rechnung ' + y + '</dt><dd>' + (inv ? esc(inv.nr || '') + ' · ' + eur(inv.betrag) + ' · ' + (inv.paid ? 'bezahlt' : 'offen') : '–') + '</dd></dl>';
   if (ms.last && ms.last.length) h += '<small class="mut">Letzte Einträge: ' + ms.last.map(e => esc(e.datum.slice(8, 10) + '.' + e.datum.slice(5, 7) + '.' + e.datum.slice(2, 4)) + ' ' + nf(e.stunden) + ' h ' + esc(e.taetigkeit || '')).join(' · ') + '</small>';
   h += '<h3>Aktionen</h3><div class="acts">';
   if (s === 'wartend') h += '<button class="btn pri" data-a="approve" data-id="' + id + '">Freischalten</button><button class="btn" data-a="approveStd" data-id="' + id + '">Freischalten + Stundentracker</button><button class="btn dng" data-a="reject" data-id="' + id + '">Ablehnen</button>';
   h += '<button class="btn" data-a="rename" data-id="' + id + '">Name ändern</button>';
   if (!isMe(id)) {
-    if (s === 'aktiv') h += '<button class="btn dng" data-a="block" data-id="' + id + '">Sperren</button>';
+    if (s === 'aktiv' || s === 'wartend') h += '<button class="btn' + (u.slBlock ? '' : ' dng') + '" data-a="slBlock" data-id="' + id + '">' + (u.slBlock ? 'Strichliste entsperren' : 'Nur Strichliste sperren') + '</button>' +
+      '<button class="btn' + (u.stdBlock ? '' : ' dng') + '" data-a="stdBlock" data-id="' + id + '">' + (u.stdBlock ? 'Stundentracker entsperren' : 'Nur Stundentracker sperren') + '</button>';
+    if (s === 'aktiv') h += '<button class="btn dng" data-a="block" data-id="' + id + '">Beide Apps sperren</button>';
     if (s === 'gesperrt') h += '<button class="btn" data-a="unblock" data-id="' + id + '">Entsperren</button>';
     if (s !== 'entfernt') h += '<button class="btn dng" data-a="remove" data-id="' + id + '">Entfernen</button>';
     if (s === 'entfernt') h += '<button class="btn" data-a="restore" data-id="' + id + '">Wiederherstellen</button><button class="btn dng" data-a="purge" data-id="' + id + '">Profil endgültig löschen</button>';
@@ -740,9 +750,11 @@ document.addEventListener('click', async e => {
 });
 async function bulk(a) {
   const ids = [...S.sel].filter(id => S.users[id] && !S.users[id].deleted); if (!ids.length) return;
-  const map = { bulkApprove: ['Freischalten', { pending: false }, u => u.pending], bulkStdOn: ['Stundentracker freigeben', { std: true }, u => u.std !== true], bulkStdOff: ['Stundentracker entziehen', { std: false, sr: F.deleteField() }, u => u.std === true] };
+  const map = { bulkApprove: ['Freischalten', { pending: false }, u => u.pending], bulkStdOn: ['Stundentracker freigeben', { std: true }, u => u.std !== true], bulkStdOff: ['Stundentracker entziehen', { std: false, sr: F.deleteField() }, u => u.std === true],
+    bulkSlBlock: ['Strichliste sperren', { slBlock: true }, u => !u.slBlock && !isMe(u.id)], bulkSlFree: ['Strichliste entsperren', { slBlock: false }, u => !!u.slBlock],
+    bulkStdBlock: ['Stundentracker sperren', { stdBlock: true }, u => !u.stdBlock && !isMe(u.id)], bulkStdFree: ['Stundentracker entsperren', { stdBlock: false }, u => !!u.stdBlock] };
   const [label, data, need] = map[a];
-  const todo = ids.filter(id => need(S.users[id])); if (!todo.length) return toast('Bei der Auswahl ist nichts zu ändern.');
+  const todo = ids.filter(id => need(Object.assign({ id }, S.users[id]))); if (!todo.length) return toast('Bei der Auswahl ist nichts zu ändern.');
   if (!await ask(label + ' für ' + todo.length + ' Person(en)?', label)) return;
   try { const wb = F.writeBatch(db); todo.forEach(id => wb.update(F.doc(db, 'users', id), data)); await wb.commit(); logEv(label + ': ' + todo.map(uname).join(', ')); toast(label + ': ' + todo.length + ' erledigt'); S.sel.clear(); render(); }
   catch (e) { toast('Fehler: ' + (e.code || e.message)); }
@@ -767,6 +779,8 @@ document.addEventListener('change', e => {
     if (f === 'sr') return A.sr(id, t.value);
     if (f === 'std') return A.std(id, t.checked);
     if (f === 'minor') return A.minor(id, t.checked);
+    if (f === 'slBlock') return A.slBlock(id, t.checked);
+    if (f === 'stdBlock') return A.stdBlock(id, t.checked);
     if (f === 'grp') return A.grp(id, t.value);
   }
   if (t.dataset.sel) { t.checked ? S.sel.add(t.dataset.sel) : S.sel.delete(t.dataset.sel); return render(); }
