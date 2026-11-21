@@ -126,6 +126,7 @@ td select{padding:4px 6px;font-size:.85rem}
       <button data-v="home">Übersicht <span class="badge" id="nbHome" hidden></span></button>
       <button data-v="members">Mitglieder <span class="badge" id="nbMembers" hidden></span></button>
       <button data-v="rights">Rechte <span class="badge" id="nbRights" hidden></span></button>
+      <button data-v="recon">Abgleich <span class="badge" id="nbRecon" hidden></span></button>
       <button data-v="hours">Pflichtstunden</button>
       <button data-v="inbox">Posteingang <span class="badge" id="nbInbox" hidden></span></button>
       <button data-v="log">Protokoll</button>
@@ -156,7 +157,7 @@ const firebaseConfig = {
   appId: "1:561283415943:web:56e161ccaac34529421d22"
 };
 const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 const URL_SL = 'https://firestorm1902.github.io/wexhainis-strichliste/';
 const URL_ST = 'https://firestorm1902.github.io/wexhainis-stundentracker/';
 const FC = 'https://console.firebase.google.com/project/wexhainis-getraenkestrichliste/';
@@ -198,7 +199,7 @@ const S = {
   users: {}, groups: [], msgs: [], reqs: [], log: [], std: [], soll: [], inv: [], rem: [], cfg: {},
   stdYear: curYear(), counts: {}, err: {},
   mf: { q: '', status: '', role: '', std: '', grp: '', sort: 'name' }, sel: new Set(),
-  inboxF: 'open', logF: { type: '', q: '' }, hoursF: '', drawer: null, memberStats: {}
+  inboxF: 'open', days: [], products: [], activeDay: null, recon: { list: {}, busy: false, t: 0, n: 0, done: 0 }, reconF: 'diff', logF: { type: '', q: '' }, hoursF: '', drawer: null, memberStats: {}
 };
 let F = {}, db, auth;
 const unsub = {};
@@ -254,8 +255,12 @@ function start() {
   unsub.soll = F.onSnapshot(c('stdsoll'), s => { S.soll = docs(s); render(); }, fail('Soll'));
   unsub.inv = F.onSnapshot(c('stdinv'), s => { S.inv = docs(s); render(); }, fail('Rechnungen'));
   unsub.rem = F.onSnapshot(c('stdrem'), s => { S.rem = docs(s); render(); }, fail('Erinnerungen'));
+  unsub.days = F.onSnapshot(F.query(c('days'), F.orderBy('date', 'desc'), F.limit(150)), s => { S.days = docs(s); if (S.recon.t) reconCheck(true); render(); }, fail('Tage'));
+  unsub.products = F.onSnapshot(c('products'), s => { S.products = docs(s); render(); }, fail('Getränke'));
+  unsub.meta = F.onSnapshot(F.doc(db, 'meta', 'state'), s => { S.activeDay = s.exists() ? s.data().active || null : null; render(); }, fail('Aktiver Tag'));
   listenStd();
   loadCounts();
+  setTimeout(() => reconCheck(false), 2500);
 }
 function listenStd() {
   stop('std');
@@ -325,8 +330,9 @@ function renderNow() {
   setBadge('nbMembers', pend);
   setBadge('nbRights', warn);
   setBadge('nbInbox', unread);
+  setBadge('nbRecon', S.recon.t ? Object.values(S.recon.list).filter(d => d.miss > 0).length : 0);
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
-  const V = { home: vHome, members: vMembers, rights: vRights, hours: vHours, inbox: vInbox, log: vLog, links: vLinks }[S.view];
+  const V = { home: vHome, recon: vRecon, members: vMembers, rights: vRights, hours: vHours, inbox: vInbox, log: vLog, links: vLinks }[S.view];
   const keep = document.activeElement && document.activeElement.id; const pos = keep && document.activeElement.selectionStart;
   $('main').innerHTML = errBox() + V();
   if (keep && $(keep)) { $(keep).focus(); try { $(keep).setSelectionRange(pos, pos); } catch (e) { } }
@@ -356,7 +362,8 @@ function vHome() {
     kpi(users.filter(u => u.delreq && !u.deleted).length, 'Löschanträge', 'members:delreq', users.some(u => u.delreq && !u.deleted) ? 'warn' : '') + '</div>';
   h += '<h3>Strichliste</h3><div class="grid">' + kpi(S.counts.scans == null ? '–' : nf(S.counts.scans), 'Buchungen gesamt', 'links') + kpi(S.counts.scans30 == null ? '–' : nf(S.counts.scans30), 'Buchungen letzte 30 Tage', 'links') +
     kpi(live.filter(u => u.role === 'admin').length, 'Getränke-Admins', 'rights') + kpi(live.filter(u => u.role === 'vorstand').length, 'Vorstand (Strichliste)', 'rights') +
-    kpi(S.reqs.length, 'offene Korrekturanträge', 'inbox', S.reqs.length ? 'warn' : '') + '</div>';
+    kpi(S.reqs.length, 'offene Korrekturanträge', 'inbox', S.reqs.length ? 'warn' : '') +
+    (S.recon.t ? (() => { const L = Object.values(S.recon.list), m = L.reduce((a, r) => a + (r.miss || 0), 0); return kpi(m, 'fehlende Flaschen (Abgleich)', 'recon', m ? 'warn' : 'ok') + kpi(L.reduce((a, r) => a + (r.beyond || 0) + (r.unloaded || 0), 0), 'mehr gebucht als mitgenommen', 'recon'); })() : kpi('…', 'Abgleich prüfen', 'recon')) + '</div>';
   h += '<h3>Stundentracker ' + esc(y) + '</h3><div class="grid">' + kpi(stdU.length, 'freigegebene Mitglieder', 'members:std') + kpi(nf(ist) + ' h', 'geleistet von ' + nf(soll) + ' h Soll', 'hours') +
     kpi(missing, 'mit Fehlstunden', 'hours:open', missing ? 'warn' : 'ok') + kpi(openInv.length, 'offene Rechnungen (' + eur(openInv.reduce((s, i) => s + (+i.betrag || 0), 0)) + ')', 'hours:unpaid', openInv.length ? 'warn' : '') + '</div>';
 
@@ -467,6 +474,84 @@ function vRights() {
     '<p><b>Stundentracker</b> – eigene Stunden erfassen. <b>Stunden-Admin</b> – alle Stunden ändern, Freigabe und Vorstand vergeben, Rechnungen. <b>Vorstand (Stunden)</b> – alle Stunden lesen.</p></div>';
   const w = warnings();
   h += '<div class="card"><h2>Hinweise</h2>' + (w.length ? w.map(([u, t, fix]) => '<div class="todo"><div class="t"><button class="nm" data-open="' + u.id + '">' + esc(u.name) + '</button> <span class="mut">' + esc(t) + '</span></div>' + (fix ? '<button class="btn" data-a="' + fix + '" data-id="' + u.id + '">Beheben</button>' : '') + '</div>').join('') : '<div class="empty">Keine Auffälligkeiten.</div>') + '</div></div>';
+  return h;
+}
+
+/* Abgleich Strichliste: mitgenommen − gebucht − übrig (wie in der Strichliste)
+   Gezählt per Zählabfrage je Tag und Getränk (kostet kaum Lesevorgänge). */
+const PR = id => S.products.find(p => p.id === id) || { id, name: '(gelöschtes Getränk)', price: 0 };
+const money = n => eur(n);
+const dayKey = d => JSON.stringify([d.load || {}, d.count || {}, d.closed || false]);
+async function reconDay(d) {
+  const sc = F.collection(db, 'scans'), cnt = q => F.getCountFromServer(q).then(r => r.data().count);
+  const load = d.load || {}, count = d.count || {};
+  const ids = new Set(Object.keys(load).filter(k => load[k] > 0));
+  Object.keys(count).forEach(k => { if (count[k] != null) ids.add(k); });
+  const total = await cnt(F.query(sc, F.where('day', '==', d.id)));
+  const used = {};
+  await Promise.all([...ids].map(async pid => { used[pid] = await cnt(F.query(sc, F.where('day', '==', d.id), F.where('p', '==', pid))); }));
+  // Buchungen von Getränken, die nicht mitgenommen wurden
+  let rest = total - Object.values(used).reduce((a, b) => a + b, 0);
+  if (rest > 0) for (const p of S.products) { if (rest <= 0) break; if (ids.has(p.id)) continue; const n = await cnt(F.query(sc, F.where('day', '==', d.id), F.where('p', '==', p.id))); if (n) { used[p.id] = n; ids.add(p.id); rest -= n; } }
+  const rows = [...ids].map(pid => {
+    const p = PR(pid), l = load[pid] || 0, u = used[pid] || 0, sl = l - u, c = count[pid] == null ? null : count[pid];
+    return { pid, name: p.name, price: +p.price || 0, l, u, sl, c, diff: c == null ? null : c - sl };
+  }).sort((a, b) => (a.diff == null ? 0 : a.diff) - (b.diff == null ? 0 : b.diff) || a.name.localeCompare(b.name, 'de'));
+  const missR = rows.filter(r => r.diff != null && r.diff < 0);
+  let undos = [];
+  if (missR.length) { try { undos = docs(await F.getDocs(F.query(F.collection(db, 'undos'), F.where('day', '==', d.id)))).filter(u => missR.some(r => r.pid === u.p)).sort((a, b) => a.t - b.t); } catch (e) { } }
+  return {
+    key: dayKey(d), total, rows, undos,
+    miss: missR.reduce((a, r) => a - r.diff, 0), val: missR.reduce((a, r) => a - r.diff * r.price, 0),
+    over: rows.filter(r => r.diff != null && r.diff > 0).reduce((a, r) => a + r.diff, 0),
+    unloaded: rows.filter(r => r.l === 0 && r.u > 0).reduce((a, r) => a + r.u, 0),
+    beyond: rows.filter(r => r.l > 0 && r.u > r.l).reduce((a, r) => a + r.u - r.l, 0),
+    uncounted: rows.filter(r => r.l > 0 && r.c == null).length,
+    counted: rows.some(r => r.c != null)
+  };
+}
+async function reconCheck(onlyChanged) {
+  if (S.recon.busy) return;
+  const R = S.recon, list = S.days.filter(d => !onlyChanged || !R.list[d.id] || R.list[d.id].key !== dayKey(d) || d.id === S.activeDay);
+  if (onlyChanged && !list.length) return;
+  R.busy = true; R.n = list.length; R.done = 0; render();
+  try {
+    const queue = list.slice();
+    await Promise.all(Array.from({ length: 5 }, async () => { while (queue.length) { const d = queue.shift(); try { R.list[d.id] = await reconDay(d); } catch (e) { console.warn('Abgleich', d.id, e); R.list[d.id] = { err: e.code || e.message, key: dayKey(d), rows: [] }; } R.done++; render(); } }));
+    Object.keys(R.list).forEach(id => { if (!S.days.some(d => d.id === id)) delete R.list[id]; });
+    R.t = Date.now();
+  } finally { R.busy = false; render(); }
+}
+function vRecon() {
+  const R = S.recon;
+  if (!R.t && !R.busy) setTimeout(() => reconCheck(false), 0);
+  let h = '<h1>Abgleich Strichliste</h1><p class="sub mut">Pro Tag und Getränk: <b>mitgenommen − gebucht − übrig</b>. Fehlt etwas, wurde zu wenig gebucht. Ohne eingetragenes „Übrig“ sieht man nur, wie viel laut Buchungen noch da sein müsste.</p>';
+  h += '<div class="bar"><select id="rcF"><option value="diff"' + (S.reconF === 'diff' ? ' selected' : '') + '>Nur Tage mit Auffälligkeiten</option><option value="all"' + (S.reconF === 'all' ? ' selected' : '') + '>Alle Tage</option></select>' +
+    '<button class="btn" data-a="reconRun"' + (R.busy ? ' disabled' : '') + '>' + (R.busy ? 'Prüfe … ' + R.done + '/' + R.n : 'Neu prüfen') + '</button>' +
+    '<button class="btn" data-a="xlsRecon"' + (R.t ? '' : ' disabled') + '>Excel</button><a class="btn" href="' + URL_SL + '" target="_blank" rel="noopener">Strichliste öffnen</a>' +
+    (R.t ? '<span class="mut">Stand ' + dtt(R.t) + '</span>' : '') + '</div>';
+  const days = S.days.map(d => ({ d, r: R.list[d.id] })).filter(x => x.r);
+  if (!days.length) return h + '<div class="card empty">' + (R.busy ? 'Tage werden geprüft …' : S.days.length ? 'Noch nicht geprüft.' : 'Noch keine Tage angelegt.') + '</div>';
+  const sum = k => days.reduce((a, x) => a + (x.r[k] || 0), 0);
+  const nMiss = days.filter(x => x.r.miss > 0).length;
+  h += '<div class="grid">' + kpi(sum('miss'), 'Flaschen fehlen (an ' + nMiss + ' Tagen)', 'recon', sum('miss') ? 'warn' : 'ok') + kpi(money(sum('val')), 'Wert der fehlenden Flaschen', 'recon', sum('val') ? 'warn' : '') +
+    kpi(sum('over'), 'zu viel gebucht (mehr übrig als erwartet)', 'recon') + kpi(sum('beyond'), 'mehr gebucht als mitgenommen', 'recon', sum('beyond') ? 'warn' : '') +
+    kpi(sum('unloaded'), 'Buchungen ohne Mitnahme', 'recon', sum('unloaded') ? 'warn' : '') + kpi(days.filter(x => x.r.uncounted).length, 'Tage, an denen „Übrig“ fehlt', 'recon') + '</div>';
+  const show = days.filter(x => S.reconF === 'all' || x.r.err || x.r.miss || x.r.over || x.r.beyond || x.r.unloaded || x.r.uncounted);
+  if (!show.length) return h + '<div class="card empty">An allen Tagen passt der Abgleich. 👍</div>';
+  h += show.map(({ d, r }) => {
+    const act = d.id === S.activeDay;
+    const tags = (act ? '<span class="tag y">läuft gerade</span>' : '') + (d.closed ? '<span class="tag">abgeschlossen</span>' : '') +
+      (r.miss ? '<span class="tag warn">fehlt ' + r.miss + (r.val ? ' · ' + money(r.val) : '') + '</span>' : '') + (r.over ? '<span class="tag b">' + r.over + ' zu viel gebucht</span>' : '') +
+      (r.beyond ? '<span class="tag warn">' + r.beyond + ' über Mitnahme</span>' : '') + (r.unloaded ? '<span class="tag warn">' + r.unloaded + ' ohne Mitnahme</span>' : '') +
+      (r.uncounted ? '<span class="tag">„Übrig“ fehlt bei ' + r.uncounted + '</span>' : '') + (!r.miss && !r.over && !r.beyond && !r.unloaded && !r.uncounted && !r.err ? '<span class="tag ok">passt</span>' : '') + (r.err ? '<span class="tag warn">Fehler: ' + esc(r.err) + '</span>' : '');
+    let t = '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><div><b>' + esc(d.date ? d.date.slice(8, 10) + '.' + d.date.slice(5, 7) + '.' + d.date.slice(0, 4) : '?') + '</b> <span class="mut">' + esc(d.place || '') + '</span></div><small class="mut">' + nf(r.total || 0) + ' Buchungen</small></div><div style="margin:6px 0 8px">' + tags + '</div>';
+    if (r.rows.length) t += '<div class="tw"><table><thead><tr><th>Getränk</th><th class="num">Mitgenommen</th><th class="num">Gebucht</th><th class="num">Müsste übrig sein</th><th class="num">Übrig gezählt</th><th class="num">Differenz</th><th class="num">Wert</th></tr></thead><tbody>' +
+      r.rows.map(x => '<tr><td>' + esc(x.name) + (x.l === 0 && x.u ? ' <span class="tag warn">nicht mitgenommen</span>' : x.u > x.l ? ' <span class="tag warn">über Mitnahme</span>' : '') + '</td><td class="num">' + x.l + '</td><td class="num">' + x.u + '</td><td class="num' + (x.sl < 0 ? ' warnTxt' : '') + '">' + x.sl + '</td><td class="num">' + (x.c == null ? '<span class="mut">–</span>' : x.c) + '</td>' +
+        '<td class="num ' + (x.diff == null ? 'mut' : x.diff < 0 ? 'warnTxt' : x.diff > 0 ? '' : 'okTxt') + '"><b>' + (x.diff == null ? '–' : x.diff < 0 ? 'fehlt ' + (-x.diff) : x.diff > 0 ? '+' + x.diff : '✔') + '</b></td><td class="num">' + (x.diff < 0 && x.price ? money(-x.diff * x.price) : '') + '</td></tr>').join('') + '</tbody></table></div>';
+    if (r.undos && r.undos.length) t += '<p style="font-size:.85rem;margin:8px 0 0"><b>Rückgängig gemacht</b> bei fehlenden Getränken: ' + r.undos.map(u => esc(u.name || uname(u.uid)) + ' (' + esc(PR(u.p).name) + ', ' + dtt(u.t) + ')').join(', ') + '</p>';
+    return t + '</div>';
+  }).join('');
   return h;
 }
 
@@ -632,6 +717,8 @@ document.addEventListener('click', async e => {
   if (a === 'fixSr') return upd(id, { sr: F.deleteField() }, 'Beheben', uname(id) + ': Stunden-Rolle entfernt (keine Freigabe)');
   if (a === 'fixRoles') return upd(id, { role: F.deleteField(), sr: F.deleteField() }, 'Beheben', uname(id) + ': Rollen entzogen (gesperrt/entfernt)');
   if (a === 'fixStd') return upd(id, { std: false }, 'Beheben', uname(id) + ': Stundentracker-Freigabe entzogen (entfernt)');
+  if (a === 'reconRun') return reconCheck(false);
+  if (a === 'xlsRecon') return xls('Abgleich', [['Abgleich', S.days.filter(d => S.recon.list[d.id]).flatMap(d => S.recon.list[d.id].rows.map(x => ({ Datum: d.date, Ort: d.place || '', Getränk: x.name, Mitgenommen: x.l, Gebucht: x.u, 'Müsste übrig sein': x.sl, 'Übrig gezählt': x.c == null ? '' : x.c, Differenz: x.diff == null ? '' : x.diff, 'Wert fehlend': x.diff < 0 ? -x.diff * x.price : '' })))]]);
   if (a === 'bulkClear') { S.sel.clear(); return render(); }
   if (a.startsWith('bulk')) return bulk(a);
   if (a === 'xlsMembers') return xls('Mitglieder', [['Mitglieder', filteredMembers().map(u => ({ Name: u.name, 'E-Mail': u.email || '', Status: STATUS[status(u)], Gruppe: gname(u.grp), 'Strichliste-Rolle': ROLE[u.role || ''], Minderjährig: u.minor ? 'ja' : '', Stundentracker: u.std === true ? 'ja' : '', 'Stunden-Rolle': u.sr ? SR[u.sr] : '', ['Stunden ' + S.stdYear]: u.std === true ? istFor(u.id) : '', Registriert: dt(u.t), Löschantrag: u.delreq ? dt(u.delreq) : '', 'Nutzer-ID': u.id }))]]);
@@ -683,6 +770,7 @@ document.addEventListener('change', e => {
   const mf = { mfS: 'status', mfR: 'role', mfT: 'std', mfG: 'grp', mfO: 'sort' }[t.id]; if (mf) { S.mf[mf] = t.value; return render(); }
   if (t.id === 'hY') { S.stdYear = t.value; listenStd(); return render(); }
   if (t.id === 'hF') { S.hoursF = t.value; return render(); }
+  if (t.id === 'rcF') { S.reconF = t.value; return render(); }
   if (t.id === 'iF') { S.inboxF = t.value; return render(); }
   if (t.id === 'lgT') { S.logF.type = t.value; return render(); }
 });

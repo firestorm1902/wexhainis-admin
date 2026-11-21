@@ -13,6 +13,7 @@ Bei jeder Änderung `APP_VERSION` in `index.html` und `VERSION` in `sw.js` hochz
 - **Übersicht** – Kennzahlen beider Apps und eine Liste mit allem, was zu erledigen ist (Anmeldungen, Löschanträge, Nachrichten, Anträge, Rechte-Hinweise)
 - **Mitglieder** – alle Profile mit Filter und Suche; Gruppe, Strichliste-Rolle, Jugendschutz, Stundentracker-Freigabe und Stunden-Rolle direkt in der Tabelle ändern; Mehrfachauswahl; Excel-Export; Detailansicht mit Sperren, Entfernen, Wiederherstellen, Umbenennen
 - **Rechte** – wer darf was in welcher App, plus automatische Hinweise auf Widersprüche
+- **Abgleich** – Strichliste pro Tag und Getränk: mitgenommen, gebucht, übrig gezählt und Differenz (fehlende Flaschen mit Wert, zu viel gebucht, Buchungen über bzw. ohne Mitnahme, wer etwas rückgängig gemacht hat); Excel-Export
 - **Pflichtstunden** – Ist/Soll je Mitglied und Jahr, Rechnungsstatus, Excel-Export
 - **Posteingang** – Nachrichten beantworten und erledigen, offene Korrekturanträge ansehen
 - **Protokoll** – die letzten 400 Einträge, durchsuchbar
