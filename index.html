@@ -97,6 +97,7 @@ td select{padding:4px 6px;font-size:.85rem}
 <section id="vLogin" class="login" hidden>
   <img src="./icon-192.png?v=3" alt="" width="72" height="72" style="border-radius:16px;display:block;margin-bottom:12px" /><h1>Wex<span style="color:#c99c00">SuperAdmin</span></h1>
   <p class="mut">Nur für den Super-Admin. Anmeldung mit dem Konto der Strichliste.</p>
+  <p class="mut" style="font-size:.78rem;margin-top:-6px" id="verLogin"></p>
   <form id="fLogin">
     <input id="lMail" type="email" placeholder="E-Mail" autocomplete="username" required />
     <input id="lPw" type="password" placeholder="Passwort" autocomplete="current-password" required />
@@ -116,7 +117,7 @@ td select{padding:4px 6px;font-size:.85rem}
 <!-- App -->
 <div id="vApp" hidden>
   <header>
-    <img src="./favicon-32.png?v=3" alt="" width="26" height="26" style="border-radius:6px" /><h1>Wex<b>SuperAdmin</b></h1>
+    <img src="./favicon-32.png?v=3" alt="" width="26" height="26" style="border-radius:6px" /><h1>Wex<b>SuperAdmin</b> <small id="ver" style="font:500 .72rem system-ui,sans-serif;color:#aaa392;margin-left:4px"></small></h1>
     <span class="who" id="who"></span>
     <button id="bInst" hidden>App installieren</button>
     <button id="bOut">Abmelden</button>
@@ -157,7 +158,7 @@ const firebaseConfig = {
   appId: "1:561283415943:web:56e161ccaac34529421d22"
 };
 const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 const URL_SL = 'https://firestorm1902.github.io/wexhainis-strichliste/';
 const URL_ST = 'https://firestorm1902.github.io/wexhainis-stundentracker/';
 const FC = 'https://console.firebase.google.com/project/wexhainis-getraenkestrichliste/';
@@ -173,6 +174,8 @@ const dtt = t => t ? new Date(t).toLocaleString('de-DE', { day: '2-digit', month
 const todayISO = () => new Date().toLocaleDateString('sv-SE');
 const curYear = () => String(new Date().getFullYear());
 let toastT;
+document.getElementById('ver').textContent = 'v' + APP_VERSION;
+document.getElementById('verLogin').textContent = 'Version ' + APP_VERSION;
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
 
 /* ---------- Dialoge ---------- */
@@ -329,7 +332,7 @@ const A = {
 /* ---------- Rendering ---------- */
 function renderNow() {
   if (!S.isSuper) return;
-  $('who').textContent = S.me + ' · v' + APP_VERSION;
+  $('who').textContent = S.me;
   const users = userList();
   const pend = users.filter(u => status(u) === 'wartend').length;
   const delr = users.filter(u => u.delreq && !u.deleted).length;
@@ -642,7 +645,7 @@ function vLinks() {
     L(FC + 'firestore/databases/-default-/data', 'Firestore → Daten', 'Rohdaten ansehen') +
     L(FC + 'usage', 'Nutzung & Kontingente', 'Lese-/Schreibzugriffe im Blick behalten') +
     '<h2 style="margin-top:14px">Als App installieren</h2><p class="mut" style="font-size:.88rem"><b>Android/Chrome/Edge:</b> oben „App installieren“ oder im Browser-Menü „App installieren“.<br><b>iPhone/iPad:</b> in Safari Teilen → „Zum Home-Bildschirm“.</p>' +
-    '<h2 style="margin-top:14px">Gut zu wissen</h2><p class="mut" style="font-size:.88rem">Diese Seite zeigt Profile aus der Sammlung <code>users</code>. Logins ohne Profil (z. B. abgebrochene Registrierungen) siehst du nur in der Firebase-Konsole unter Authentication.<br><br>Deine Nutzer-ID: <code>' + esc(S.user.uid) + '</code></p></div></div>';
+    '<h2 style="margin-top:14px">Gut zu wissen</h2><p class="mut" style="font-size:.88rem">Diese Seite zeigt Profile aus der Sammlung <code>users</code>. Logins ohne Profil (z. B. abgebrochene Registrierungen) siehst du nur in der Firebase-Konsole unter Authentication.<br><br>App-Version: <b>' + APP_VERSION + '</b><br>Deine Nutzer-ID: <code>' + esc(S.user.uid) + '</code></p></div></div>';
 }
 
 /* Detail-Ansicht */
